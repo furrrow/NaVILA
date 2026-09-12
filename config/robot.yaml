@@ -1,0 +1,51 @@
+# linear and angular speed limits for the robot
+turtle:
+  max_v: 0.1 # m/s
+  max_w: 0.2 # rad/s
+  image_topic: "/turtle1/image_compressed"
+  policy_waypoint_topic: "/turtle1/policy_waypoint"
+  steered_waypoint_topic: "/turtle1/steered_waypoint"
+  reached_goal_topic: "/turtle1/topoplan/reached_goal"
+  sampled_actions_topic: "/turtle1/sampled_actions"
+  vel_topic: "/turtle1/cmd_vel"
+  overlay_topic: "/turtle1/turtlelay"
+ghost:
+  max_v: 0.2 # m/s
+  max_w: 0.3 # rad/s
+#  image_topic: "/camera/camera/color/image_raw/compressed"
+  image_topic: "/camera/camera/color/image_raw"
+  odom_topic: "/odom_lidar"
+  policy_path_topic: "/ghost/policy_path"
+  steered_waypoint_topic: "/ghost/steered_waypoint"
+  reached_goal_topic: "/ghost/topoplan/reached_goal"
+  sampled_actions_topic: "/ghost/sampled_actions"
+  vel_topic: "  /mcu/command/manual_twist"
+  overlay_topic: "/ghost/path_overlay"
+  robot_radius: 0.5
+husky:
+  max_v: 0.2 # m/s
+  max_w: 0.3 # rad/s
+  image_topic: "/camera/camera/color/image_raw"
+#  image_topic: "/camera/camera/color/image_raw/compressed"
+#  image_topic: "/argus/ar0234_front_left/image_raw"
+  waypoint_topic: "/husky/waypoint"
+  odom_topic: "/a200_0648/platform/odom/filtered"
+#  odom_topic: "/odom_lidar"
+  policy_path_topic: "/husky/policy_path"
+  steered_waypoint_topic: "/husky/steered_waypoint"
+  goal_topic: "/next_goal"
+  reached_goal_topic: "/husky/topoplan/reached_goal"
+  sampled_actions_topic: "/husky/sampled_actions"
+  vel_topic: "/a200_0648/cmd_vel"
+  overlay_topic: "/husky/path_overlay"
+  robot_radius: 1.0
+# general configs
+img_w: 1280
+img_h: 720
+shrink_w: 640
+shrink_h: 480
+# observation rate for the robot
+frame_rate: 15
+controller_rate: 10
+waypoint_idx : 2
+cam_matrix: "cam_matrix.json"

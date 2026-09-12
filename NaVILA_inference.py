@@ -17,10 +17,7 @@ from llava.mm_utils import (
 from llava.model.builder import load_pretrained_model
 
 
-def navila_command_to_waypoints(
-    command: str,
-    num_steps: int = 8,
-) -> List[np.ndarray]:
+def navila_command_to_waypoints(command: str, num_steps: int = 8, rotate_distance: float = 1.0) -> List[np.ndarray]:
     """
     Convert a NaVILA verbal navigation command into relative robot-frame
     waypoints compatible with pd_controller().
@@ -50,7 +47,7 @@ def navila_command_to_waypoints(
     text = command.lower().strip()
 
     if "stop" in text:
-        return []
+        return np.array([[0, 0]])
 
     forward_match = re.search(r"(?:move\s+)?forward.*?([0-9]+(?:\.[0-9]+)?)\s*(cm|m)", text)
     if forward_match:
@@ -72,7 +69,7 @@ def navila_command_to_waypoints(
 
         if direction == "right":
             angle_deg = -angle_deg
-        return _split_rotation(angle_deg=angle_deg, n_steps=num_steps,)
+        return _split_rotation(angle_deg=angle_deg, n_steps=num_steps, rotate_distance=rotate_distance)
 
     raise ValueError(f"Could not parse NaVILA command: {command!r}")
 
@@ -85,16 +82,31 @@ def _split_forward_motion(distance_m: float, n_steps: float) -> List[np.ndarray]
 
     return waypoints
 
-
-def _split_rotation(angle_deg: float, n_steps: float) -> List[np.ndarray]:
+def _pure_rotation(angle_deg: float, n_steps: float) -> List[np.ndarray]:
 
     degree_array = np.linspace(0, angle_deg, n_steps)
-    print(degree_array)
     radian_array = np.deg2rad(degree_array)
     hx_array = np.cos(radian_array)
     hy_array = np.sin(radian_array)
     zero_array = np.zeros_like(hx_array)
     waypoints = np.stack((zero_array, zero_array, hx_array, hy_array)).T
+    return waypoints
+
+
+def _split_rotation(angle_deg: float, n_steps: int, rotate_distance: float) -> List[np.ndarray]:
+    """ instead of returning just angle, we give waypoints small distance towards that rotation"""
+    degree_array = np.linspace(0, angle_deg, n_steps)
+    radian_array = np.deg2rad(degree_array)
+    hx_array = np.cos(radian_array)
+    hy_array = np.sin(radian_array)
+
+    # Put the waypoint a small distance in the
+    # direction of the desired heading.
+    dx_array = rotate_distance * hx_array
+    dy_array = rotate_distance * hy_array
+
+    waypoints = np.stack((dx_array, dy_array), axis=1)
+
     return waypoints
 
 class NavilaPolicy:
@@ -252,6 +264,7 @@ def main():
         policy.add_frame(image)
 
     output = policy.predict(args.instruction)
+    output = "turn left 90 degrees"
     print(output)
     waypoints = navila_command_to_waypoints(output, num_steps=4)
     # print(waypoints)

@@ -7,7 +7,7 @@ from PIL import Image
 import torch
 # import matplotlib
 # matplotlib.use("TkAgg")
-from picture_inference import NavilaPolicy, navila_command_to_waypoints
+from NaVILA_inference import NavilaPolicy, navila_command_to_waypoints
 
 from custom_utils.stream_handler import FrameStatus, InputStreamHandler
 from custom_utils.io_utils import save_depth_video_mp4, overlay_path

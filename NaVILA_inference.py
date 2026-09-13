@@ -69,7 +69,8 @@ def navila_command_to_waypoints(command: str, num_steps: int = 8, rotate_distanc
 
         if direction == "right":
             angle_deg = -angle_deg
-        return _split_rotation(angle_deg=angle_deg, n_steps=num_steps, rotate_distance=rotate_distance)
+        # return _split_rotation(angle_deg=angle_deg, n_steps=num_steps, rotate_distance=rotate_distance)
+        return _pure_rotation(angle_deg=angle_deg, n_steps=num_steps)
 
     raise ValueError(f"Could not parse NaVILA command: {command!r}")
 
@@ -264,10 +265,11 @@ def main():
         policy.add_frame(image)
 
     output = policy.predict(args.instruction)
-    output = "turn left 90 degrees"
+    # output = "turn left 90 degrees"
+    # output = "go forward 75 cm"
     print(output)
     waypoints = navila_command_to_waypoints(output, num_steps=4)
-    # print(waypoints)
+    print(waypoints)
 
 
 if __name__ == "__main__":

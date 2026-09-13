@@ -44,16 +44,12 @@ class NaVILANode(Node):
             deploy_config = yaml.safe_load(f)
         self.rate = deploy_config["frame_rate"]
 
-        ## NaVILA runs in very small increments. I will just take the final waypoint:
-        self.waypoint_idx = -1
-        # self.waypoint_idx = deploy_config['waypoint_idx']
-
         robot_config = deploy_config[args.robot]
         print(f"using robot config for: {args.robot}")
         self.instruction = args.instruction
         print(f"using instruction: {args.instruction}")
-        self.waypoint_scale_factor = args.scale
-        print(f"scaling waypoints by: {args.scale}")
+        self.waypoint_scale_factor = int(args.scale)
+        print(f"scaling waypoints by: {self.waypoint_scale_factor}")
         self.max_v = robot_config["max_v"]
         self.max_w = robot_config["max_w"]
         self.original_img_size = (deploy_config["img_w"], deploy_config["img_h"])  # (1280, 720)
@@ -180,19 +176,44 @@ class NaVILANode(Node):
     #         self.robot_velocity_base[2],
     #     ])
 
+    import numpy as np
+    from nav_msgs.msg import Path
+    from geometry_msgs.msg import PoseStamped
 
-    def _to_path_msg(self, path_xy: np.ndarray) -> Path:
+    def _to_path_msg(self, path: np.ndarray) -> Path:
+        """
+        Convert path to nav_msgs/Path.
+        Each waypoint can be:
+            [x, y] or [x, y, hx, hy]
+        where (hx, hy) is a unit heading vector.
+        """
+        assert path.ndim == 2
+        assert path.shape[1] in (2, 4), \
+            "path must have shape (N, 2) or (N, 4)"
         msg = Path()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = self.path_frame_id  # semantic: "start frame"
+        msg.header.frame_id = self.path_frame_id
 
-        for x, y in path_xy:
+        for waypoint in path:
+            if len(waypoint) == 2:
+                x, y = waypoint
+                hx, hy = 1.0, 0.0
+            else:
+                x, y, hx, hy = waypoint
+
             ps = PoseStamped()
             ps.header = msg.header
             ps.pose.position.x = float(x)
             ps.pose.position.y = float(y)
             ps.pose.position.z = 0.0
-            ps.pose.orientation.w = 1.0
+
+            # heading vector -> yaw
+            yaw = np.arctan2(hy, hx)
+            # yaw -> quaternion
+            ps.pose.orientation.x = 0.0
+            ps.pose.orientation.y = 0.0
+            ps.pose.orientation.z = float(np.sin(yaw / 2.0))
+            ps.pose.orientation.w = float(np.cos(yaw / 2.0))
             msg.poses.append(ps)
 
         return msg
@@ -207,20 +228,37 @@ class NaVILANode(Node):
             self.policy.add_frame(self.obs_img)
             output = self.policy.predict(self.instruction)
             self.get_logger().info(f"output: {output}")
-            # rotate distance lets robot turn and go forward in rotate distance, and should be scaled with scale factor
-            waypoints = navila_command_to_waypoints(output, rotate_distance=1.0/self.waypoint_scale_factor)
-            path_xy = waypoints[:, :2] * self.waypoint_scale_factor
-            print(path_xy[-1]) if waypoints[-1][0] > 0 else print(waypoints[-1])
-            self.pub_path.publish(self._to_path_msg(path_xy))
-            # self.get_logger().info(f"publishing path # {self.waypoint_idx} of path: path_xy")
-            chosen_waypoint = waypoints[self.waypoint_idx]
+            # note, we produce n=waypoint_scale_factor+1 waypoints from navila
+            # we also scale produced waypoint by the same waypoint_scale_factor
+            # thus the second waypoint is the same command produced by navila prior to scaling
+            waypoints = navila_command_to_waypoints(output, num_steps=self.waypoint_scale_factor + 1)
+            waypoints *= self.waypoint_scale_factor
+            if np.array_equal(waypoints, [[0, 0]]):
+                self.get_logger().warn("NaVILA commands stop.")
+                path_xy = waypoints
+            else:
+                if len(waypoints[0]) == 2:
+                    path_xy = waypoints[:, :2]
+                    self.pub_path.publish(self._to_path_msg(path_xy[1:]))
+                    # print(len(path_xy[1:]))
+                else: # pure rotation with 4d waypoints
+                    path_xy = None
+                    self.pub_path.publish(self._to_path_msg(waypoints[1:]))
+                    # print(len(waypoints[1:]))
+                self.waypoint_idx = 1
+                chosen_waypoint = waypoints[self.waypoint_idx]
+                # self.get_logger().info(f"publishing path # {self.waypoint_idx} of path: path_xy")
+
             t4 = time.perf_counter()
             # visualization code
             if self.visualize:
-                overlay_img = overlay_path(trajectories=path_xy,
-                                           img=np.array(self.obs_img.resize(self.original_img_size)),
-                                           cam_matrix=self.cam_matrix,
-                                           T_cam_from_base=self.T_cam_from_base, )
+                if path_xy is None:
+                    overlay_img = np.array(self.obs_img.resize(self.original_img_size))
+                else:
+                    overlay_img = overlay_path(trajectories=path_xy,
+                                               img=np.array(self.obs_img.resize(self.original_img_size)),
+                                               cam_matrix=self.cam_matrix,
+                                               T_cam_from_base=self.T_cam_from_base, )
                 out_msg = self.br.cv2_to_imgmsg(np.array(overlay_img), encoding="rgb8")
                 self.trajectory_visual_pub.publish(out_msg)
                 if self.show_time_performance:
@@ -274,6 +312,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("-r", "--robot", type=str, help="Robot Name", default="husky")
     parser.add_argument("-i", "--instruction", type=str, help="instruction", default="go forward")
-    parser.add_argument("-s", "--scale", type=float, help="waypoint scale factor", default=5.0)
+    parser.add_argument("-s", "--scale", type=int, help="waypoint scale factor int", default=4)
     args = parser.parse_args()
     main(args)

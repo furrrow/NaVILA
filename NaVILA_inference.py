@@ -115,7 +115,7 @@ class NavilaPolicy:
         self,
         model_path: str,
         device: str = "cuda",
-        num_frames: int = 8,
+        num_frames: int = 4,
         conv_mode: str = "llama_3",
     ):
         self.device = device

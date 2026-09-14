@@ -63,7 +63,7 @@ class NaVILANode(Node):
         self.path_frame_id = "base_link"
         self._started_sent = False
         self.show_time_performance = False
-        self.visualize = True
+        self.visualize = False
 
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(
@@ -139,7 +139,7 @@ class NaVILANode(Node):
         # self.get_logger().info("Reached Image callback!")
         if self.compressed_img_topic:
             self.obs_img = self.br.compressed_imgmsg_to_cv2(msg)
-            # self.obs_img = cv2.cvtColor(self.obs_img, cv2.COLOR_BGR2RGB)
+            self.obs_img = cv2.cvtColor(self.obs_img, cv2.COLOR_BGR2RGB)
         else:
             self.obs_img = self.br.imgmsg_to_cv2(msg)
         # Original camera timestamp
@@ -247,7 +247,7 @@ class NaVILANode(Node):
                     # print(len(waypoints[1:]))
                 self.waypoint_idx = 1
                 chosen_waypoint = waypoints[self.waypoint_idx]
-                # self.get_logger().info(f"publishing path # {self.waypoint_idx} of path: path_xy")
+                self.get_logger().info(f"publishing path # {self.waypoint_idx} of chosen_waypoint: {chosen_waypoint}")
 
             t4 = time.perf_counter()
             # visualization code

@@ -2,6 +2,7 @@
 turtle:
   max_v: 0.1 # m/s
   max_w: 0.2 # rad/s
+  lookahead_distance: 0.3 # m
   image_topic: "/turtle1/image_compressed"
   policy_waypoint_topic: "/turtle1/policy_waypoint"
   steered_waypoint_topic: "/turtle1/steered_waypoint"
@@ -12,6 +13,7 @@ turtle:
 ghost:
   max_v: 0.2 # m/s
   max_w: 0.3 # rad/s
+  lookahead_distance: 0.3 # m
   image_topic: "/camera/camera/color/image_raw/compressed"
 #  image_topic: "/camera/camera/color/image_raw"
   odom_topic: "/odom_lidar"
@@ -25,8 +27,9 @@ ghost:
 husky:
   max_v: 0.2 # m/s
   max_w: 0.3 # rad/s
+  lookahead_distance: 0.3 # m
   image_topic: "/camera/camera/color/image_raw/compressed"
-#  image_topic: "/camera/camera/color/image_raw"
+#  image_topic: "/argus/ar0234_front_left/image_raw"
   waypoint_topic: "/husky/waypoint"
   odom_topic: "/a200_0648/platform/odom/filtered"
 #  odom_topic: "/odom_lidar"
@@ -38,6 +41,21 @@ husky:
   vel_topic: "/a200_0648/cmd_vel"
   overlay_topic: "/husky/path_overlay"
   robot_radius: 1.0
+sim_nova:
+  max_v: 1.5 # m/s
+  max_w: 1.2 # rad/s
+  lookahead_distance: 1.0 # m
+  image_topic: "/isaacsim/camera/front/image_raw/compressed"
+  waypoint_topic: "/sim_nova/waypoint"
+  odom_topic: "/isaacsim/odom"
+  policy_path_topic: "/sim_nova/policy_path"
+  steered_waypoint_topic: "/sim_nova/steered_waypoint"
+  goal_topic: "/sim_nova/next_goal"
+  reached_goal_topic: "/sim_nova/reached_goal"
+  sampled_actions_topic: "/sim_nova/sampled_actions"
+  vel_topic: "/isaacsim/cmd_vel"
+  overlay_topic: "/sim_nova/path_overlay"
+  robot_radius: 0.5
 # general configs
 img_w: 1280
 img_h: 720
@@ -46,5 +64,4 @@ shrink_h: 480
 # observation rate for the robot
 frame_rate: 15
 controller_rate: 10
-waypoint_idx : 2
 cam_matrix: "cam_matrix.json"

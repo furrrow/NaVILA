@@ -140,6 +140,10 @@ class NavilaPolicy:
 
         self.frames = deque(maxlen=num_frames)
 
+    def reset(self):
+        """Clear temporal observations at an episode boundary."""
+        self.frames.clear()
+
     def add_frame(self, image: Image.Image):
         self.frames.append(image.convert("RGB"))
 

@@ -11,10 +11,11 @@ DETACH=false
 SESSION_NAME=""
 CONTROLLER_DT="0.75"
 TIME_LOOK_AHEAD="1.0"
+FIX_END=false
 LOG_ROOT="${NOVA_ROS_LOG_ROOT:-${REPO_ROOT}/logs/nova_ros}"
 
 usage() {
-  echo "Usage: $0 [normal|steered|no-velocity] [--detach] [--session-name NAME] [--dt SECONDS] [--time-look-ahead SECONDS]"
+  echo "Usage: $0 [normal|steered|no-velocity] [--detach] [--session-name NAME] [--dt SECONDS] [--time-look-ahead SECONDS] [--fix-end|--no-fix-end]"
 }
 
 if [[ $# -gt 0 && ( "$1" == "normal" || "$1" == "steered" || "$1" == "no-velocity" ) ]]; then
@@ -34,6 +35,8 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || { echo "--time-look-ahead requires a value" >&2; exit 2; }
       TIME_LOOK_AHEAD="$2"; shift 2 ;;
     --time-look-ahead=*) TIME_LOOK_AHEAD="${1#*=}"; shift ;;
+    --fix-end) FIX_END=true; shift ;;
+    --no-fix-end) FIX_END=false; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -48,6 +51,7 @@ done
 [[ "${TIME_LOOK_AHEAD}" =~ ^[0-9]+([.][0-9]+)?$ ]] || {
   echo "SteerNav time look-ahead must be a non-negative number." >&2; exit 2
 }
+echo "SteerNav fix end: ${FIX_END}"
 [[ -f "${ROS_SETUP}" ]] || { echo "ROS setup not found: ${ROS_SETUP}" >&2; exit 1; }
 [[ -f "${ROBOT_CONFIG}" ]] || { echo "Robot config not found: ${ROBOT_CONFIG}" >&2; exit 1; }
 command -v tmux >/dev/null 2>&1 || { echo "tmux is not installed." >&2; exit 1; }
@@ -90,6 +94,9 @@ controller_flags="--simulation-episode-control"
 if [[ "${MODE}" != "normal" ]]; then
   controller_flags="--steer ${controller_flags}"
   steernav_flags="--time-look-ahead ${TIME_LOOK_AHEAD}"
+  if [[ "${FIX_END}" == true ]]; then
+    steernav_flags="${steernav_flags} --fix-end"
+  fi
   if [[ "${MODE}" == "no-velocity" ]]; then
     steernav_flags="${steernav_flags} --no-velocity"
   fi

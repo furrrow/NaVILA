@@ -30,6 +30,10 @@ def navila_command_to_waypoints(command: str, num_steps: int = 8, rotate_distanc
         translation: [dx, dy]
         rotation:    [0, 0, hx, hy]
 
+    ``num_steps`` is the number of motion waypoints. The returned trajectory
+    also includes the robot's current pose as its first waypoint, so callers
+    publishing future waypoints should omit element zero.
+
     Examples:
         "move forward 50 cm"
             -> five [0.1, 0.0] waypoints
@@ -75,9 +79,9 @@ def navila_command_to_waypoints(command: str, num_steps: int = 8, rotate_distanc
     raise ValueError(f"Could not parse NaVILA command: {command!r}")
 
 
-def _split_forward_motion(distance_m: float, n_steps: float) -> List[np.ndarray]:
+def _split_forward_motion(distance_m: float, n_steps: int) -> List[np.ndarray]:
 
-    fwd_distances = np.linspace(0, distance_m, n_steps)
+    fwd_distances = np.linspace(0, distance_m, n_steps + 1)
     side_distances = np.zeros_like(fwd_distances)
     waypoints = np.stack((fwd_distances, side_distances)).T
 
@@ -268,8 +272,8 @@ def main():
     for _ in range(policy.num_frames):
         policy.add_frame(image)
 
-    output = policy.predict(args.instruction)
-    # output = "turn left 90 degrees"
+    # output = policy.predict(args.instruction)
+    output = "turn left 90 degrees"
     # output = "go forward 75 cm"
     print(output)
     waypoints = navila_command_to_waypoints(output, num_steps=4)

@@ -10,7 +10,7 @@ SCENARIOS=()
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--mode MODE] [--inference-method NAME] [--time-look-ahead SECONDS] SCENARIO [SCENARIO ...]
+Usage: $(basename "$0") [--mode MODE] [--inference-method NAME] [--time-look-ahead SECONDS] [--fix-end|--no-fix-end] SCENARIO [SCENARIO ...]
 
 Run run_nova_experiments.bash once for each scenario. A scenario may be a
 YAML path or a short name from ${SCENARIO_DIR}, with or without .yaml.
@@ -59,6 +59,10 @@ while (( $# > 0 )); do
       shift 2
       ;;
     --time-look-ahead=*)
+      FORWARD_ARGS+=("$1")
+      shift
+      ;;
+    --fix-end|--no-fix-end)
       FORWARD_ARGS+=("$1")
       shift
       ;;

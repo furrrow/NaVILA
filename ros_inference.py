@@ -184,7 +184,7 @@ class NaVILANode(Node):
             return waypoints[0]
         # Keep NaVILA's existing [x, y, hx, hy] pure-rotation controller contract.
         if waypoints.shape[1] >= 4 and np.allclose(waypoints[:, :2], 0.0):
-            return waypoints[1]
+            return waypoints[-1] # return last waypoint to preserve full rotation
         segment_lengths = np.linalg.norm(np.diff(waypoints[:, :2], axis=0), axis=1)
         cumulative_lengths = np.concatenate(([0.0], np.cumsum(segment_lengths)))
         index = int(np.searchsorted(cumulative_lengths, self.lookahead_distance, side="left"))
@@ -220,9 +220,7 @@ class NaVILANode(Node):
         try:
             waypoints = np.asarray(
                 navila_command_to_waypoints(
-                    output, num_steps=self.waypoint_scale_factor + 1
-                ),
-                dtype=np.float64,
+                    output, num_steps=8), dtype=np.float64,
             )
         except (TypeError, ValueError) as exc:
             self.get_logger().error(f"Rejecting unparseable NaVILA output: {exc}")
@@ -270,7 +268,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="ROS inference pipeline for NaVILA")
     parser.add_argument("-r", "--robot", default="husky")
     parser.add_argument("-i", "--instruction", default="go forward")
-    parser.add_argument("-s", "--scale", type=int, default=1, help="waypoint scale factor")
+    parser.add_argument("-s", "--scale", type=int, default=2, help="waypoint scale factor")
     parser.add_argument("--config", default=str(REPO_ROOT / "config" / "robot.yaml"))
     parser.add_argument(
         "--model-path", default=str(REPO_ROOT / "checkpoints" / "navila-llama3-8b-8f")

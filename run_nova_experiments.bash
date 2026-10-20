@@ -9,6 +9,7 @@ SCENARIO="DynaNav/configs/icra_scenarios_v4/scenario3_5.yaml"
 MODE="ablation"
 CONTROLLER_DT="0.75"
 TIME_LOOK_AHEAD="1.0"
+FIX_END=false
 INFERENCE_METHOD="${INFERENCE_METHOD:-NaVILA}"
 READY_TIMEOUT_SECONDS="${READY_TIMEOUT_SECONDS:-600}"
 BATCH_ID="${BATCH_ID:-$(date +%Y%m%d_%H%M%S)}"
@@ -17,7 +18,7 @@ RUN_ATTEMPT_ID="${RUN_ATTEMPT_ID:-$(date +%Y%m%d_%H%M%S)_$$}"
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--mode normal|steered|no-velocity|both|ablation] [--scenario FILE] [--dt SECONDS] [--inference-method NAME] [--time-look-ahead SECONDS]
+Usage: $(basename "$0") [--mode normal|steered|no-velocity|both|ablation] [--scenario FILE] [--dt SECONDS] [--inference-method NAME] [--time-look-ahead SECONDS] [--fix-end|--no-fix-end]
 
 Run one experiment mode, both primary modes, or an ablation of normal,
 steered, and steered without velocity compensation.
@@ -36,6 +37,8 @@ while (( $# > 0 )); do
     --inference-method=*) INFERENCE_METHOD="${1#*=}"; shift ;;
     --time-look-ahead) (( $# >= 2 )) || { echo "--time-look-ahead requires a value." >&2; exit 2; }; TIME_LOOK_AHEAD="$2"; shift 2 ;;
     --time-look-ahead=*) TIME_LOOK_AHEAD="${1#*=}"; shift ;;
+    --fix-end) FIX_END=true; shift ;;
+    --no-fix-end) FIX_END=false; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -122,9 +125,14 @@ run_mode() {
   echo
   echo "=== ${mode}: run_id=${run_id} ==="
   mkdir -p "${run_log_dir}"
+  local nova_ros_args=("${mode}" --detach --session-name "${session}" --dt "${CONTROLLER_DT}" --time-look-ahead "${TIME_LOOK_AHEAD}")
+  if [[ "${FIX_END}" == true ]]; then
+    nova_ros_args+=(--fix-end)
+  else
+    nova_ros_args+=(--no-fix-end)
+  fi
   NOVA_ROS_LOG_ROOT="${run_log_dir}" \
-    "${REPO_ROOT}/nova_ros.bash" "${mode}" --detach --session-name "${session}" \
-    --dt "${CONTROLLER_DT}" --time-look-ahead "${TIME_LOOK_AHEAD}"
+    "${REPO_ROOT}/nova_ros.bash" "${nova_ros_args[@]}"
   active_session="${session}"
   wait_until_ready "${mode}" "${session}"
 
@@ -167,6 +175,7 @@ echo "Run attempt: ${RUN_ATTEMPT_ID}"
 echo "Mode: ${MODE}"
 echo "Inference method: ${INFERENCE_METHOD}"
 echo "SteerNav time look-ahead: ${TIME_LOOK_AHEAD}s"
+echo "SteerNav fix end: ${FIX_END}"
 echo "Scenario: ${SCENARIO}"
 echo "Remote simulator: ${REMOTE_HOST}:${REMOTE_REPO}"
 echo "Controller dt: ${CONTROLLER_DT}s"

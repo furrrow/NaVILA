@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCENARIO_DIR="DynaNav/configs/icra_scenarios_v4"
+SCENARIO_DIR="DynaNav/configs/crossover_scenarios_v2"
 BATCH_PREFIX="${BATCH_ID:-$(date +%Y%m%d_%H%M%S)}"
 MODE="ablation"
 FORWARD_ARGS=()
@@ -10,7 +10,7 @@ SCENARIOS=()
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--mode MODE] [--inference-method NAME] [--time-look-ahead SECONDS] [--fix-end|--no-fix-end] SCENARIO [SCENARIO ...]
+Usage: $(basename "$0") [--mode MODE] [--inference-method NAME] [--fix-end|--no-fix-end] SCENARIO [SCENARIO ...]
 
 Run run_nova_experiments.bash once for each scenario. A scenario may be a
 YAML path or a short name from ${SCENARIO_DIR}, with or without .yaml.
@@ -49,19 +49,7 @@ while (( $# > 0 )); do
       FORWARD_ARGS+=("$1")
       shift
       ;;
-    --time-look-ahead)
-      if (( $# < 2 )); then
-        echo "$1 requires a value." >&2
-        usage >&2
-        exit 2
-      fi
-      FORWARD_ARGS+=("$1" "$2")
-      shift 2
-      ;;
-    --time-look-ahead=*)
-      FORWARD_ARGS+=("$1")
-      shift
-      ;;
+    --dry-run) FORWARD_ARGS+=(--dry-run); shift ;;
     --fix-end|--no-fix-end)
       FORWARD_ARGS+=("$1")
       shift

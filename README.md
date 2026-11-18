@@ -67,6 +67,82 @@ BATCH_ID=navila_eval ./run_nova_scenarios.bash \
   scenario1_5 scenario2_5 scenario3_5
 ```
 
+### Manual four-terminal example
+
+To run the SteerNav configuration without the orchestration script, start each
+component in a separate terminal. Start the remote Isaac Sim benchmark after
+the three local nodes are ready, and keep all four terminals open.
+
+Terminal 1 — NaVILA inference:
+
+```bash
+cd /home/jim/Projects/NaVILA
+source /opt/ros/humble/setup.bash
+export ROS_DOMAIN_ID=42
+export PYTHONUNBUFFERED=1
+
+uv run python ros_inference.py \
+  --robot sim_nova \
+  --config /home/jim/Projects/NaVILA/config/robot.yaml \
+  --ros-args -p use_sim_time:=true
+```
+
+Terminal 2 — waypoint controller:
+
+```bash
+cd /home/jim/Projects/NaVILA
+source /opt/ros/humble/setup.bash
+export ROS_DOMAIN_ID=42
+export PYTHONUNBUFFERED=1
+
+uv run python custom_utils/custom_utils/kinematic_controller_naive.py \
+  --robot sim_nova \
+  --config /home/jim/Projects/NaVILA/config/robot.yaml \
+  --dt 0.75 \
+  --steer \
+  --simulation-episode-control \
+  --ros-args -p use_sim_time:=true
+```
+
+Terminal 3 — SteerNav:
+
+```bash
+cd /home/jim/Projects/steernav
+source /opt/ros/humble/setup.bash
+export ROS_DOMAIN_ID=42
+export PYTHONUNBUFFERED=1
+
+uv run steernav/ros_inference.py \
+  --robot sim_nova \
+  --time-look-ahead 1.0 \
+  --fix-end \
+  --ros-args -p use_sim_time:=true
+```
+
+Terminal 4 — remote Isaac Sim:
+
+```bash
+ssh -t isaac
+```
+
+Then run the benchmark in the remote shell:
+
+```bash
+cd /home/isaac/Projects/TIC-VLA
+export DISPLAY=:1
+
+./run_sim.bash \
+  --scenario DynaNav/configs/steernav_scenarios/scenario3_transfer_warehouse_5trials.yaml \
+  --inference-method NaVILA \
+  -- \
+  --run_id fixend_navila_scenario3_transfer_warehouse_5trials_steered_manual \
+  --experiment_mode steered
+```
+
+For the `no-velocity` variant, add `--no-velocity` to the SteerNav command,
+change the run ID, and pass `--experiment_mode no-velocity` to the remote
+benchmark.
+
 ## 🚀 Training
 ### Installation
 To build environment for training NaVILA, please run the following:

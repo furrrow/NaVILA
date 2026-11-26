@@ -13,6 +13,8 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry, Path as PathMsg
 from PIL import Image as PILImage
+from rclpy.clock import JumpThreshold
+from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.qos import QoSDurabilityPolicy, QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
 from sensor_msgs.msg import CompressedImage, Image
@@ -103,6 +105,12 @@ class NaVILANode(Node):
                 Image, robot_config["overlay_topic"], sensor_qos
             )
 
+        self._clock_epoch = 0
+        self._clock_reset_pending = False
+        self._clock_jump_handle = self.get_clock().create_jump_callback(
+            JumpThreshold(min_forward=None, min_backward=Duration(nanoseconds=-1), on_clock_change=True),
+            post_callback=self._on_behavior_clock_jump,
+        )
         self.timer = self.create_timer(1.0 / self.rate, self.run_inference_loop)
         self.get_logger().info("Waiting for image observations...")
 
@@ -208,14 +216,32 @@ class NaVILANode(Node):
             self.br.cv2_to_imgmsg(np.asarray(overlay), encoding="rgb8")
         )
 
+    def _on_behavior_clock_jump(self, _jump):
+        # Never read the clock, take model locks or reset a model inside this callback.
+        self._clock_epoch += 1
+        self._clock_reset_pending = True
+
     def run_inference_loop(self):
+        clock_epoch = self._clock_epoch
+        if self._clock_reset_pending:
+            self._clock_reset_pending = False
+            self._reset_episode_state(self.current_episode_id, self.instruction)
         if self.obs_img is None:
             return
         if self.simulation_mode and (self.current_episode_id is None or self.odom is None):
             return
 
+        loop_start = time.perf_counter()
         self.policy.add_frame(self.obs_img)
+        predict_start = time.perf_counter()
         output = self.policy.predict(self.instruction)
+        predict_end = time.perf_counter()
+        self.get_logger().info(
+            f"Inference time (predict, including preprocessing and decoding): "
+            f"{(predict_end - predict_start) * 1000:.1f} ms"
+        )
+        if clock_epoch != self._clock_epoch:
+            return
         self.get_logger().info(f"output: {output}")
         try:
             waypoints = np.asarray(
@@ -241,6 +267,7 @@ class NaVILANode(Node):
 
         published_path = waypoints if len(waypoints) == 1 else waypoints[1:]
         chosen_waypoint = self._select_waypoint(waypoints)
+        publish_start = time.perf_counter()
         self.pub_path.publish(self._to_path_msg(published_path))
         waypoint_msg = Float32MultiArray()
         waypoint_msg.data = chosen_waypoint.tolist()
@@ -252,6 +279,15 @@ class NaVILANode(Node):
             self.pub_started.publish(Empty())
             self._started_sent = True
             self.get_logger().info("Published /started after first valid inference result.")
+
+        loop_end = time.perf_counter()
+        self.get_logger().info(
+            f"Inference loop timings: "
+            f"add_frame={(predict_start - loop_start) * 1000:.1f} ms, "
+            f"postprocess={(publish_start - predict_end) * 1000:.1f} ms, "
+            f"publish/visualize={(loop_end - publish_start) * 1000:.1f} ms, "
+            f"total={(loop_end - loop_start) * 1000:.1f} ms"
+        )
 
         self.inference_count += 1
         elapsed = time.perf_counter() - self.inference_start_time

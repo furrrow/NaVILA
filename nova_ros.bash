@@ -16,6 +16,7 @@ STEERNAV_IMAGE_QUEUE_DEPTH="${STEERNAV_IMAGE_QUEUE_DEPTH:-1}"
 STEERNAV_PROCESS_REPEATED_IMAGES="${STEERNAV_PROCESS_REPEATED_IMAGES:-false}"
 STEERNAV_RECEIVER_TIMING_LOG="${STEERNAV_RECEIVER_TIMING_LOG:-}"
 STEERNAV_VISUALIZATION_FRAME_DIR="${STEERNAV_VISUALIZATION_FRAME_DIR:-}"
+STEERNAV_VISUALIZATION_SAVE_INTERVAL="${STEERNAV_VISUALIZATION_SAVE_INTERVAL:-2.0}"
 STEERNAV_VELOCITY_REFERENCE_LOG="${STEERNAV_VELOCITY_REFERENCE_LOG:-false}"
 STEERNAV_TAPER_PEDESTRIAN_SWEEP="${STEERNAV_TAPER_PEDESTRIAN_SWEEP:-false}"
 MODE="ablation"
@@ -60,7 +61,11 @@ done
   echo "Controller dt must be a positive number." >&2; exit 2
 }
 [[ "${NAVILA_SCALE}" =~ ^[1-9][0-9]*$ ]] || { echo "Invalid NAVILA_SCALE" >&2; exit 2; }
+[[ "${STEERNAV_VISUALIZATION_SAVE_INTERVAL}" =~ ^[0-9]+([.][0-9]+)?$ ]] || {
+  echo "STEERNAV_VISUALIZATION_SAVE_INTERVAL must be nonnegative seconds" >&2; exit 2
+}
 source "${CROSSOVER_TOOLS_ROOT:-/home/jim/Projects/TIC-VLA}/scripts/steernav_launch_settings.bash"
+steernav_settings_flags+=" --visualization-save-interval ${STEERNAV_VISUALIZATION_SAVE_INTERVAL}"
 if [[ "${VALIDATE_ONLY:-false}" == true ]]; then printf 'SteerNav flags: %s\n' "$steernav_settings_flags"; exit 0; fi
 
 echo "SteerNav fix end: ${FIX_END}"

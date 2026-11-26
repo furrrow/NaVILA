@@ -159,7 +159,7 @@ run_mode() {
 
   echo "Starting simulator benchmark on ${REMOTE_HOST} in a visible tmux pane..."
   active_remote_job="${run_id}"
-  remote_command="set -o pipefail; timeout --signal=TERM --kill-after=30s ${BENCHMARK_TIMEOUT_SECONDS}s ssh -n -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o BatchMode=yes -o ConnectTimeout=10 ${REMOTE_HOST} 'cd ${REMOTE_REPO} && DISPLAY=${REMOTE_DISPLAY} ./run_sim.bash --scenario ${SCENARIO} --job-id ${run_id} --inference-method ${INFERENCE_METHOD} -- --run_id ${run_id} --experiment_mode ${mode}' 2>&1 | tee ${run_log_dir}/remote.log; status=\${PIPESTATUS[0]}; echo \${status} > ${status_file}; exit \${status}"
+  remote_command="set -o pipefail; timeout --signal=TERM --kill-after=30s ${BENCHMARK_TIMEOUT_SECONDS}s ssh -n -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o BatchMode=yes -o ConnectTimeout=10 ${REMOTE_HOST} 'cd ${REMOTE_REPO} && ${RECOVERY_REMOTE_GUARD:-}DISPLAY=${REMOTE_DISPLAY} ./run_sim.bash --scenario ${SCENARIO} --job-id ${run_id} --inference-method ${INFERENCE_METHOD} -- --run_id ${run_id} --experiment_mode ${mode}${RECOVERY_REMOTE_ARGS:-}' 2>&1 | tee ${run_log_dir}/remote.log; status=\${PIPESTATUS[0]}; echo \${status} > ${status_file}; exit \${status}"
   printf '%s\n' "$remote_command" > "$run_log_dir/remote_command.txt"
   remote_pane="$(tmux split-window -v -P -F '#{pane_id}' -t "${session}:0" -c "${REPO_ROOT}" /bin/bash -lc "${remote_command}")"
   tmux select-pane -t "${remote_pane}" -T "Isaac ${mode} status"
@@ -224,7 +224,7 @@ if [[ "${MODE}" == "no-velocity" || "${MODE}" == "ablation" ]]; then run_mode no
 if [[ "${MODE}" == "normal" || "${MODE}" == "both" || "${MODE}" == "ablation" ]]; then run_mode normal; fi
 
 echo
-echo "Requested NaVILA experiment mode '${MODE}' completed successfully."
+echo "Requested NaVILA experiment mode '${MODE}' finished scheduling; check capture_status.json and recovery_needed.json."
 if [[ "${MODE}" == "ablation" ]]; then
   echo "Remote run IDs: ${INFERENCE_METHOD}_${BATCH_ID}_${RUN_ATTEMPT_ID}_normal, ${INFERENCE_METHOD}_${BATCH_ID}_${RUN_ATTEMPT_ID}_steered, ${INFERENCE_METHOD}_${BATCH_ID}_${RUN_ATTEMPT_ID}_no-velocity"
 elif [[ "${MODE}" == "both" ]]; then

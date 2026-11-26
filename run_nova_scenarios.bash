@@ -109,4 +109,4 @@ for requested_scenario in "${SCENARIOS[@]}"; do
 done
 
 echo
-echo "All ${#SCENARIOS[@]} scenarios completed successfully."
+echo "Scheduling finished for ${#SCENARIOS[@]} scenarios. Check capture_status.json and recovery_needed.json for result completeness."

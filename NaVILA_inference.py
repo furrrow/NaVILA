@@ -272,8 +272,8 @@ def main():
     for _ in range(policy.num_frames):
         policy.add_frame(image)
 
-    # output = policy.predict(args.instruction)
-    output = "turn left 90 degrees"
+    output = policy.predict(args.instruction)
+    # output = "turn left 90 degrees"
     # output = "go forward 75 cm"
     print(output)
     waypoints = navila_command_to_waypoints(output, num_steps=4)
